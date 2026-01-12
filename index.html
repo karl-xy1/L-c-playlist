@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeonStream // Spotify Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-neon-cyan: #00ffff;
+            --color-neon-pink: #ff00ff;
+            --color-void: #050505;
+        }
+        body {
+            background-color: var(--color-void);
+            color: #e0e0e0;
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, button, input {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-neon-cyan); 
+        }
+        
+        /* Effects */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 50;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+        .neon-border-cyan {
+            box-shadow: 0 0 5px var(--color-neon-cyan), inset 0 0 5px var(--color-neon-cyan);
+            border: 1px solid var(--color-neon-cyan);
+        }
+        .neon-text-cyan {
+            text-shadow: 0 0 10px var(--color-neon-cyan);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 10px var(--color-neon-pink);
+        }
+        .cyber-input:focus {
+            box-shadow: 0 0 15px var(--color-neon-cyan);
+            border-color: var(--color-neon-cyan);
+        }
+        
+        /* Animations */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out forwards;
+        }
+        .clip-path-polygon {
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.35.0"
+  }
+}
+</script>
+</head>
+<body class="crt min-h-screen relative flex flex-col">
+
+    <!-- Header -->
+    <header class="fixed top-0 w-full z-40 bg-black/90 backdrop-blur border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_10px_#00ffff]"></div>
+                <h1 class="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500 neon-text-cyan">
+                    NEON<span class="text-white">MANAGER</span>
+                </h1>
+            </div>
+            <div class="text-xs font-mono text-gray-500">
+                STATUS: <span id="status-text" class="text-green-500">WAITING_FOR_TOKEN</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 pt-24 pb-12 px-4 max-w-6xl mx-auto w-full">
+        
+        <!-- STEP 1: AUTH INPUT -->
+        <div id="auth-section" class="mb-12 animate-fade-in">
+            <div class="relative p-1 bg-gradient-to-r from-cyan-800 to-pink-800 rounded clip-path-polygon">
+                <div class="bg-black p-6 clip-path-polygon">
+                    <label class="block text-cyan-400 text-xs font-bold mb-2 uppercase tracking-widest">>> ENTER SPOTIFY ACCESS TOKEN</label>
+                    <div class="flex gap-4 flex-col md:flex-row">
+                        <input 
+                            type="password" 
+                            id="token-input" 
+                            class="flex-1 bg-gray-900/50 border border-gray-700 text-white p-4 cyber-input outline-none font-mono tracking-wider focus:border-cyan-500 transition-all text-sm"
+                            placeholder="Paste your OAuth Token here (Bearer...)"
+                        >
+                        <button 
+                            onclick="app.scanMusic()"
+                            class="px-8 py-4 bg-cyan-500/10 border border-cyan-500 text-cyan-400 font-bold hover:bg-cyan-500 hover:text-black transition-all uppercase tracking-widest clip-path-polygon group relative overflow-hidden"
+                        >
+                            <span class="relative z-10">SCAN MY MUSIC ID</span>
+                            <div class="absolute inset-0 bg-cyan-400 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200"></div>
+                        </button>
+                    </div>
+                    <p class="text-gray-600 text-xs mt-2 font-mono">
+                        * Token required scopes: <span class="text-gray-400">user-top-read, playlist-modify-public, playlist-modify-private</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ERROR MESSAGE -->
+        <div id="error-box" class="hidden mb-8 p-4 border border-red-500 bg-red-500/10 text-red-500 font-mono text-sm animate-fade-in">
+            ERROR: <span id="error-msg"></span>
+        </div>
+
+        <!-- STEP 2: TRACK LIST DISPLAY -->
+        <div id="tracks-section" class="hidden animate-fade-in">
+            <div class="flex justify-between items-end mb-6 border-b border-gray-800 pb-2">
+                <h2 class="text-3xl text-white neon-text-pink">TOP TRACKS DETECTED</h2>
+                <div class="text-right">
+                    <span class="text-xs text-gray-500 block">COUNT</span>
+                    <span class="text-xl font-mono text-cyan-400" id="track-count">00</span>
+                </div>
+            </div>
+
+            <!-- Grid of Cards -->
+            <div id="track-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+                <!-- Cards injected via JS -->
+            </div>
+
+            <!-- STEP 3: GENERATE ACTION -->
+            <div class="flex justify-center mb-12">
+                <button 
+                    id="btn-generate"
+                    onclick="app.generatePlaylist()"
+                    class="hidden px-12 py-6 bg-pink-600/20 border-2 border-pink-500 text-pink-500 font-black text-xl hover:bg-pink-500 hover:text-black hover:shadow-[0_0_30px_#ff00ff] transition-all uppercase tracking-widest clip-path-polygon animate-fade-in"
+                >
+                    GENERATE ULTIMATE PLAYLIST >>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 4: PLAYER EMBED -->
+        <div id="player-section" class="hidden animate-fade-in max-w-4xl mx-auto">
+            <div class="relative p-[2px] bg-gradient-to-br from-cyan-500 via-purple-500 to-pink-500 clip-path-polygon">
+                <div class="bg-black p-4 clip-path-polygon">
+                    <h3 class="text-center text-cyan-400 mb-4 font-mono text-sm">>> PLAYLIST_CREATED_SUCCESSFULLY // EMBEDDING_PLAYER...</h3>
+                    <div id="iframe-container" class="w-full h-[152px] bg-gray-900 flex items-center justify-center">
+                        <span class="text-gray-600 font-mono animate-pulse">LOADING_IFRAME...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Background Grid -->
+    <div class="fixed inset-0 pointer-events-none z-[-1] opacity-20">
+        <div class="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.1)_1px,transparent_1px)] bg-[size:40px_40px] [transform:perspective(500px)_rotateX(60deg)] origin-top"></div>
+    </div>
+
+    <script>
+        // --- APP LOGIC ---
+        const app = {
+            state: {
+                token: '',
+                userId: '',
+                tracks: [], // { uri, name, artist, image, album }
+                playlistId: ''
+            },
+
+            // Utils
+            el: (id) => document.getElementById(id),
+            showError: (msg) => {
+                const box = document.getElementById('error-box');
+                const text = document.getElementById('error-msg');
+                text.innerText = msg;
+                box.classList.remove('hidden');
+                console.error(msg);
+            },
+            hideError: () => document.getElementById('error-box').classList.add('hidden'),
+
+            // 1. SCAN MUSIC LOGIC
+            scanMusic: async function() {
+                this.hideError();
+                const tokenInput = this.el('token-input').value.trim();
+                
+                if (!tokenInput) {
+                    this.showError("TOKEN_MISSING: Please input your Spotify Access Token.");
+                    return;
+                }
+                this.state.token = tokenInput;
+                this.el('status-text').innerText = "CONNECTING...";
+                this.el('status-text').className = "text-yellow-400 animate-pulse";
+
+                try {
+                    // 1a. Get User Profile (Needed for User ID)
+                    const userRes = await fetch('https://api.spotify.com/v1/me', {
+                        headers: { 'Authorization': `Bearer ${this.state.token}` }
+                    });
+                    if (!userRes.ok) throw new Error("INVALID TOKEN or Network Error");
+                    const userData = await userRes.json();
+                    this.state.userId = userData.id;
+
+                    // 1b. Get Top Tracks
+                    // Limit 12 for grid display
+                    const tracksRes = await fetch('https://api.spotify.com/v1/me/top/tracks?time_range=short_term&limit=12', {
+                        headers: { 'Authorization': `Bearer ${this.state.token}` }
+                    });
+                    const tracksData = await tracksRes.json();
+
+                    // Process Data
+                    this.state.tracks = tracksData.items.map(item => ({
+                        uri: item.uri,
+                        name: item.name,
+                        artist: item.artists[0].name,
+                        album: item.album.name,
+                        image: item.album.images[0]?.url || ''
+                    }));
+
+                    this.renderTracks();
+                    this.el('status-text').innerText = "DATA_ACQUIRED";
+                    this.el('status-text').className = "text-cyan-400";
+                    this.el('tracks-section').classList.remove('hidden');
+                    this.el('btn-generate').classList.remove('hidden');
+                    
+                    // Scroll down slightly
+                    this.el('tracks-section').scrollIntoView({ behavior: 'smooth' });
+
+                } catch (error) {
+                    this.showError(error.message);
+                    this.el('status-text').innerText = "CONNECTION_FAILED";
+                    this.el('status-text').className = "text-red-500";
+                }
+            },
+
+            // Render Logic
+            renderTracks: function() {
+                const grid = this.el('track-grid');
+                grid.innerHTML = '';
+                this.el('track-count').innerText = this.state.tracks.length.toString().padStart(2, '0');
+
+                this.state.tracks.forEach((track, index) => {
+                    const delay = index * 100;
+                    const html = `
+                        <div class="flex items-center gap-3 p-3 border border-gray-800 bg-black/60 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(0,255,255,0.2)] transition-all group animate-fade-in" style="animation-delay: ${delay}ms">
+                            <div class="w-12 h-12 flex-shrink-0 relative overflow-hidden border border-gray-700">
+                                <img src="${track.image}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h4 class="text-white font-bold text-sm truncate group-hover:text-cyan-400 font-sans">${track.name}</h4>
+                                <p class="text-gray-500 text-xs truncate font-mono">${track.artist}</p>
+                            </div>
+                            <div class="text-gray-700 font-mono text-xs">#${index + 1}</div>
+                        </div>
+                    `;
+                    grid.insertAdjacentHTML('beforeend', html);
+                });
+            },
+
+            // 2. CREATE PLAYLIST LOGIC
+            generatePlaylist: async function() {
+                this.hideError();
+                const btn = this.el('btn-generate');
+                
+                if (this.state.tracks.length === 0) return;
+
+                // UI Loading State
+                const originalText = btn.innerText;
+                btn.innerText = "PROCESSING...";
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                try {
+                    const uris = this.state.tracks.map(t => t.uri);
+                    
+                    // Call the Logic provided by user
+                    // Note: Adapted to class method
+                    const playlistId = await this.createPlaylistAPI(uris, this.state.token, this.state.userId);
+                    
+                    this.state.playlistId = playlistId;
+                    
+                    // Success UI
+                    this.renderPlayer(playlistId);
+                    btn.innerText = "PLAYLIST GENERATED";
+                    btn.classList.remove('border-pink-500', 'text-pink-500');
+                    btn.classList.add('border-green-500', 'text-green-500');
+                    
+                } catch (error) {
+                    this.showError("FAILED TO CREATE PLAYLIST: " + error.message);
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            },
+
+            // The specific logic requested by user
+            createPlaylistAPI: async function(tracksUri, token, userId) {
+                // 1. Create Playlist
+                console.log("Creating playlist for user:", userId);
+                const playlistRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        name: "Neon Top Mix " + new Date().toLocaleDateString(), 
+                        description: "Generated by NeonStream Cyberpunk Manager", 
+                        public: false 
+                    })
+                });
+                
+                if (!playlistRes.ok) {
+                    const err = await playlistRes.json();
+                    throw new Error(err.error?.message || "Playlist creation failed");
+                }
+                
+                const playlist = await playlistRes.json();
+                console.log("Playlist created:", playlist.id);
+
+                // 2. Add Tracks
+                const addTracksRes = await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ uris: tracksUri })
+                });
+
+                if (!addTracksRes.ok) {
+                     const err = await addTracksRes.json();
+                     throw new Error(err.error?.message || "Adding tracks failed");
+                }
+
+                return playlist.id;
+            },
+
+            renderPlayer: function(playlistId) {
+                const container = this.el('iframe-container');
+                const section = this.el('player-section');
+                section.classList.remove('hidden');
+                
+                // Embed Iframe
+                container.innerHTML = `
+                    <iframe 
+                        style="border-radius:12px" 
+                        src="https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0" 
+                        width="100%" 
+                        height="152" 
+                        frameBorder="0" 
+                        allowfullscreen="" 
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                        loading="lazy">
+                    </iframe>
+                `;
+                
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+    </script>
+</body>
+</html>

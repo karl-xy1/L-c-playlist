@@ -1,0 +1,5 @@
+{
+  "name": "NeonStream: Kiến Tạo Playlist AI",
+  "description": "Giao diện cyberpunk tổng hợp bài hát yêu thích từ Spotify và phân tích bằng Gemini AI.",
+  "requestFramePermissions": []
+}
